@@ -38,20 +38,14 @@ func main() {
 }
 
 func readStream(ctx context.Context, client *ingest.Client, dispatcher *ingest.Dispatcher, errs chan<- error) {
-	conn, err := client.Connect(ctx)
+	manager := ingest.NewConnectionManager(
+		func(ctx context.Context) (ingest.MessageConnection, error) {
+			return client.Connect(ctx)
+		},
+		dispatcher.Dispatch,
+	)
 
-	if err != nil {
+	if err := manager.Run(ctx); err != nil {
 		errs <- err
-		return
-	}
-	defer conn.Close()
-
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			errs <- err
-			return
-		}
-		dispatcher.Dispatch(msg)
 	}
 }
